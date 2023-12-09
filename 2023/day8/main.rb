@@ -20,6 +20,7 @@ def part_two_answer(file = "input.txt")
   _count_ghost_steps(maps, steps)
 end
 
+# brute force
 def _count_steps(maps, steps)
   maps = _parse(maps)
   cnt = 0
@@ -29,41 +30,40 @@ def _count_steps(maps, steps)
 
   while current_point != finish_point
     cnt += 1
-    instruction = steps.next
-    current_point = maps[current_point][left_right[instruction]]
+    step = steps.next
+    current_point = maps[current_point][left_right[step]]
   end
 
   cnt
 end
 
+# count steps for every 'ghost' and then find lcm of these numbers
 def _count_ghost_steps(maps, steps)
   maps = _parse(maps)
-  current_points = _start_points(maps)
-  cnt = 0
-  left_right = { "L" => 1..3, "R" => 6..8 }
+  enter_set = _start_points(maps).map { |k, v| Hash[k, v] }
 
-  # maps.values.filter { |v| v[6..8].end_with?("Z") }
-  # maps.filter { |k, v| k.end_with?("Z") }
-
-  until _end_point?(current_points)
-    cnt += 1
-    instruction = steps.next
-    current_points = current_points.values.each_with_object({}) do |point, acc|
-      key = point[left_right[instruction]]
-      acc[key] = maps[key] 
-    end
+  distances = enter_set.map do |m|
+    _go_forward(maps, m, steps)
   end
 
-  cnt
+  distances.reduce(&:lcm)
+end
+
+def _go_forward(maps, current, steps)
+  left_right = { "L" => 1..3, "R" => 6..8 }
+  cnt = 0
+  k = current.keys.first
+  while true
+    return cnt if k.end_with?("Z")
+
+    cnt += 1
+    step = steps.next
+    k = maps[k][left_right[step]]
+  end
 end
 
 def _start_points(maps)
-  maps.filter { |k, v| k.end_with?("A") }
-end
-
-def _end_point?(maps)
-  p maps
-  maps.keys.all? { |k| k.end_with?("Z") }
+  maps.filter { _1.end_with?("A") }
 end
 
 def _parse(maps)
@@ -73,20 +73,8 @@ def _parse(maps)
   end
 end
 
-data = <<~INPUT
-  LR
-
-  11A = (11B, XXX)
-  11B = (XXX, 11Z)
-  11Z = (11B, XXX)
-  22A = (22B, XXX)
-  22B = (22C, 22C)
-  22C = (22Z, 22Z)
-  22Z = (22B, 22B)
-  XXX = (XXX, XXX)
-INPUT
-
 # p part_one_answer
 # 19_631
 
 # p part_two_answer
+# 21_003_205_388_413
