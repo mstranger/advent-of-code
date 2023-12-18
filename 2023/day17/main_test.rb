@@ -33,7 +33,19 @@ class Day17Test < Minitest::Test
   end
 
   def test_part_two
-    skip
-    assert_equal 0, part_two_answer(@file)
+    assert_equal 94, part_two_answer(@file)
+  end
+
+  def test_part_two_second_example
+    data = <<~INPUT
+      111111111111
+      999999999991
+      999999999991
+      999999999991
+      999999999991
+    INPUT
+
+    File.write(@file, data)
+    assert_equal 71, part_two_answer(@file)
   end
 end
