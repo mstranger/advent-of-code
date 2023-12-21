@@ -31,7 +31,7 @@ class Day21Test < Minitest::Test
   end
 
   def test_part_two
-    skip
-    assert_equal 0, part_two_answer(@file)
+    assert_equal 16, part_two_answer(@file, 6)
+    assert_equal 50, part_two_answer(@file, 10)
   end
 end

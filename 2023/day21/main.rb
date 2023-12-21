@@ -2,58 +2,111 @@
 ### Aoc 2023. Day 21
 ###
 
-# TODO: recursion takes a long time after about 12 steps
+# TODO: bfs
 def part_one_answer(file = "input.txt", steps = 64)
-  data = File.read(file).split("\n").map(&:chars)
-  current = find_start(data)
-  make_moves(data, current, steps)
+  data = parse(File.read(file))
 
-  # data.each { p _1.join }
+  queue = [
+    { i: data[:start][0], j: data[:start][1], rest: steps }
+  ]
 
-  data.map(&:join).join.count("O")
+  until queue.empty?
+    step = queue.shift
+    queue.push(*next_steps(data, [step[:i], step[:j]], step[:rest]))
+  end
+
+  data[:plots].values.filter(&:even?).length
 end
 
-def part_two_answer
+##
+#  Lagrange's interpolation formula for ax^2 + bx + c with x=[0,1,2] and y=[y0,y1,y2]:
+#     f(x) = (x^2-3x+2) * y0/2 - (x^2-2x)*y1 + (x^2-x) * y2/2
+#  coefficients:
+#     a = y0/2 - y1 + y2/2
+#     b = -3*y0/2 + 2*y1 - y2/2
+#     c = y0
+#
+def part_two_answer(file = "input.txt", steps = 26_501_365)
+  len = File.read(file).split("\n").length
+  r = steps % len
+
+  values = [
+    part_one_answer(file, r),
+    part_one_answer(file, r + len),
+    part_one_answer(file, r + (len * 2))
+  ]
+
+  poly = lagrange(values)
+  target = (steps - r) / len
+
+  (poly[:a] * target * target) + (poly[:b] * target) + poly[:c]
 end
 
 # ----
 
-DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]]
+def parse(data)
+  grid = data.split("\n").map(&:chars)
+  walls = {}
+  plots = {}
+  start = [0, 0]
 
-def find_start(data)
-  data.each_with_index do |line, i|
-    j = line.index("S")
-    return [i, j] if j
+  (0...grid.length).each do |i|
+    (0...grid[i].length).each do |j|
+      val = grid[i][j]
+
+      walls["#{i},#{j}"] = true if val == "#"
+
+      if val == "S"
+        plots["#{i},#{j}"] = -1
+        start = [i, j]
+      end
+    end
   end
+
+  { walls:, plots:, start:, size: grid.length }
 end
 
-def make_moves(grid, curr, steps)
+def wrapped(i, j, size)
+  i %= size
+  j %= size
+  [
+    i >= 0 ? i : size + i,
+    j >= 0 ? j : size + j
+  ]
+end
+
+def next_steps(grid, curr, rest)
   i, j = curr
-  return if grid[i][j] == "#" || steps == 0
+  k = "#{i},#{j}"
+  wi, wj = wrapped(i, j, grid[:size])
+  wk = "#{wi},#{wj}"
 
-  grid[i][j] = "."
-  DIRS.each do |dir|
-    i1 = i + dir[0]
-    j1 = j + dir[1]
-    next if i1 < 0 || j1 < 0 || i1 > grid.length - 1 || j1 > grid[0].length - 1
+  return [] if grid[:walls].key?(wk) || (grid[:plots].key?(k) && grid[:plots][k] >= rest)
 
-    grid[i1][j1] = "O" if grid[i1][j1] == "."
-    make_moves(grid, [i1, j1], steps - 1)
+  grid[:plots][k] = rest
+
+  if rest > 0
+    [
+      { i: i + 1, j:, rest: rest - 1 },
+      { i: i - 1, j:, rest: rest - 1 },
+      { i:, j: j + 1, rest: rest - 1 },
+      { i:, j: j - 1, rest: rest - 1 }
+    ]
+  else
+    []
   end
 end
 
-data = <<~IN
-  ...........
-  .....###.#.
-  .###.##..#.
-  ..#.#...#..
-  ....#.#....
-  .##..S####.
-  .##..#...#.
-  .......##..
-  .##.#.####.
-  .##..##.##.
-  ...........
-IN
+def lagrange(values)
+  {
+    a: ((values[0] + values[2]) / 2) - values[1],
+    b: (-3 * (values[0] / 2)) + (2 * values[1]) - (values[2] / 2),
+    c: values[0]
+  }
+end
 
-p part_one_answer("input_test.txt", 6)
+# p part_one_answer
+# 3782
+
+# p part_two_answer
+# 630_661_863_455_116, ~3s
