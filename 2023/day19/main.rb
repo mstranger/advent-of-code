@@ -6,16 +6,32 @@ def part_one_answer(file = "input.txt")
   data = File.read(file).split("\n\n")
   workflows = data[0]
   parts = data[1]
-  
+
   tbl = fill_table(workflows, {})
   input = parts.split("\n").map do |rules|
-    rules[1..-2].split(",").map { |t| t.split("=") }.to_h.transform_values(&:to_i)
+    rules[1..-2].split(",").to_h { |t| t.split("=") }.transform_values(&:to_i)
   end
 
   input.filter { apply(_1, tbl) == "A" }.map(&:values).flatten.sum
 end
 
-def part_two_answer
+def part_two_answer(file = "input.txt")
+  workflows = {}
+  File.read(file).split("\n").each do |line|
+    break if line.empty?
+
+    key, conditions = line.gsub("}", "").split("{")
+    workflows[key] = []
+    conditions = conditions.split(",")
+    conditions.each do |condition|
+      check, dest = condition.split(":")
+      to_check = check.split(/[\s<>]/)[0]
+      workflows[key] << process(dest, to_check, check)
+    end
+  end
+
+  state = [Array(1..4000), Array(1..4000), Array(1..4000), Array(1..4000)]
+  walk(workflows, "in", state)
 end
 
 # ----
@@ -56,36 +72,55 @@ def apply(part, dict)
 
   loop do
     res = current.each do |fn|
-      next unless fn.(part)
+      next unless fn.call(part)
 
-      break fn.(part)
+      break fn.call(part)
     end
 
-    return res if res == "A" || res == "R"
+    return res if %w[A R].include?(res)
 
     current = dict[res]
   end
 end
 
-data = <<~INPUT
-  px{a<2006:qkq,m>2090:A,rfg}
-  pv{a>1716:R,A}
-  lnx{m>1548:A,A}
-  rfg{s<537:gd,x>2440:R,A}
-  qs{s>3448:A,lnx}
-  qkq{x<1416:A,crn}
-  crn{x>2662:A,R}
-  in{s<1351:px,qqz}
-  qqz{s>2770:qs,m<1801:hdj,R}
-  gd{a>3333:R,R}
-  hdj{m>838:A,pv}
+def process(dest, to_check, check)
+  return ->(x, m, a, s) { [check, [x, m, a, s], [x, m, a, s]] } unless dest
 
-  {x=787,m=2655,a=1222,s=2876}
-  {x=1679,m=44,a=2067,s=496}
-  {x=2036,m=264,a=79,s=2244}
-  {x=2461,m=1339,a=466,s=291}
-  {x=2127,m=1623,a=2188,s=1013}
-INPUT
+  lambda do |x, m, a, s|
+    [
+      dest,
+      [
+        to_check == "x" ? x.select { |x| eval(check) } : x,
+        to_check == "m" ? m.select { |m| eval(check) } : m,
+        to_check == "a" ? a.select { |a| eval(check) } : a,
+        to_check == "s" ? s.select { |s| eval(check) } : s
+      ],
+      [
+        to_check == "x" ? x.reject { |x| eval(check) } : x,
+        to_check == "m" ? m.reject { |m| eval(check) } : m,
+        to_check == "a" ? a.reject { |a| eval(check) } : a,
+        to_check == "s" ? s.reject { |s| eval(check) } : s
+      ]
+    ]
+  end
+end
+
+def walk(workflows, next_step, state)
+  return state.map(&:count).reduce(:*) if next_step == "A"
+  return 0 if next_step == "R"
+
+  num = 0
+  workflows[next_step].each do |op|
+    next_step, matches, non_matches = op.call(*state)
+    num += walk(workflows, next_step, matches)
+    state = non_matches
+  end
+
+  num
+end
 
 # p part_one_answer
 # 353_046
+
+# p part_two_answer
+# 125_355_665_599_537, ~17s
