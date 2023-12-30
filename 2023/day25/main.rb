@@ -6,14 +6,13 @@
 
 # NOTE: https://github.com/Kateba72/advent_of_code/blob/main/aoc/y2023/d25.rb
 
+# see also: https://en.wikipedia.org/wiki/Karger's_algorithm
+
 require_relative "graph"
 
 def part_one_answer(file = "input.txt")
   data = File.read(file)
   Solution.new.run(data)
-end
-
-def part_two_answer
 end
 
 # ----
